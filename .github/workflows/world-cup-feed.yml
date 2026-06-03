@@ -1,0 +1,53 @@
+name: world-cup-feed
+
+# Regenerate the .ics on a schedule (and on demand). The feed itself updates
+# within minutes of a knockout team being confirmed; subscribers see it on
+# their calendar app's next poll.
+on:
+  schedule:
+    - cron: "*/30 * * * *"     # every 30 min. Tighten to "*/10" on match days if you like.
+  workflow_dispatch: {}         # manual "Run workflow" button
+  push:
+    branches: [ main ]          # rebuild on code edits too
+
+permissions:
+  contents: write               # needed to commit the regenerated file
+
+concurrency:                    # never run two rebuilds at once
+  group: wc-feed
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build feed
+        env:
+          FD_TOKEN: ${{ secrets.FD_TOKEN }}   # football-data.org token (repo secret)
+        run: |
+          mkdir -p public
+          # Use the live provider if a token is set, else fall back to the manual
+          # overrides file (or pure scaffold if neither exists).
+          if [ -n "$FD_TOKEN" ]; then
+            python wc2026_feed.py --provider footballdata --token "$FD_TOKEN" \
+              --out public/fifa-world-cup-2026.ics
+          elif [ -f overrides.json ]; then
+            python wc2026_feed.py --provider manual --overrides overrides.json \
+              --out public/fifa-world-cup-2026.ics
+          else
+            python wc2026_feed.py --provider none --out public/fifa-world-cup-2026.ics
+          fi
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "wc-feed-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/fifa-world-cup-2026.ics public/_headers 2>/dev/null || true
+          git diff --cached --quiet && echo "no change" || git commit -m "feed: refresh $(date -u +%FT%TZ)"
+          git push

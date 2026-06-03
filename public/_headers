@@ -1,0 +1,6 @@
+# Cloudflare Pages headers. Put this file at public/_headers so it ships with
+# the feed. Ensures calendar apps see a real calendar and don't over-cache.
+/fifa-world-cup-2026.ics
+  Content-Type: text/calendar; charset=utf-8
+  Cache-Control: public, max-age=900
+  Content-Disposition: inline; filename="fifa-world-cup-2026.ics"
