@@ -35,7 +35,7 @@ overrides.json schema (manual provider) -- key by official match number OR by
            "away_score": 1, "status": "FINISHED"}
   }
 """
-import argparse, json, sys, urllib.request, urllib.error
+import argparse, json, sys, time, urllib.request, urllib.error
 from datetime import datetime, timedelta, timezone
 
 # ----------------------------------------------------------------------------
@@ -230,16 +230,34 @@ def _assign(fixtures, log):
 def provider_none(args, log):
     return {}
 
+def _fd_get(url, token, log, attempts=2):
+    """GET with X-Auth-Token. Logs rate-limit headers; on 429 honors the
+    reset/Retry-After header and retries once. We make a single request per
+    run, so this is belt-and-suspenders rather than a real throttling need."""
+    for attempt in range(1, attempts+1):
+        req=urllib.request.Request(url, headers={"X-Auth-Token":token})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                # surface whatever rate-limit headers the API returns (names vary)
+                rl=[f"{k}: {v}" for k,v in r.headers.items()
+                    if any(t in k.lower() for t in ("request","ratelimit","reset","available"))]
+                if rl: log.append("  rate-limit: "+" | ".join(rl))
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code==429 and attempt<attempts:
+                wait=e.headers.get("Retry-After") or e.headers.get("X-RequestCounter-Reset") or "60"
+                try: wait=min(int(float(wait)),65)
+                except ValueError: wait=60
+                log.append(f"  429 rate-limited; waiting {wait}s then retrying")
+                time.sleep(wait); continue
+            sys.exit(f"football-data error {e.code}: {e.read().decode()[:200]}")
+    sys.exit("football-data: exhausted retries")
+
 def provider_footballdata(args, log):
     if not args.token:
         sys.exit("football-data provider needs --token (free key from football-data.org).")
     url="https://api.football-data.org/v4/competitions/WC/matches"
-    req=urllib.request.Request(url, headers={"X-Auth-Token":args.token})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            data=json.load(r)
-    except urllib.error.HTTPError as e:
-        sys.exit(f"football-data error {e.code}: {e.read().decode()[:200]}")
+    data=_fd_get(url, args.token, log)
     fx=[]
     for m in data.get("matches",[]):
         try: utc=datetime.strptime(m["utcDate"],"%Y-%m-%dT%H:%M:%SZ")
