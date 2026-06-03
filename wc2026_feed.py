@@ -99,6 +99,8 @@ ALIAS = {
  "democratic republic of the congo":"DR Congo",
  "czech republic":"Czechia","czechia":"Czechia",
  "bosnia and herzegovina":"Bosnia & Herzegovina","bosnia & herzegovina":"Bosnia & Herzegovina",
+ "bosnia-herzegovina":"Bosnia & Herzegovina",
+ "cape verde islands":"Cape Verde",
  "curacao":"Cura\u00e7ao","cura\u00e7ao":"Cura\u00e7ao",
 }
 def canon(name):
