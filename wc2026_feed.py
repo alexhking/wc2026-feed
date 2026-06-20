@@ -281,10 +281,11 @@ def provider_footballdata(args, log):
     log.append(f"  football-data: {len(fx)} fixtures fetched")
     return _assign(fx, log)
 
-def provider_manual(args, log):
-    if not args.overrides: sys.exit("manual provider needs --overrides PATH")
-    raw=json.load(open(args.overrides,encoding="utf-8"))
-    # keyed by official match number (str/int) or "YYYY-MM-DD@City"
+def _manual_overrides(path, log):
+    """Parse an overrides.json into {seq: override}. Keyed by official match
+    number (str/int) or 'YYYY-MM-DD@City'. Used both by the manual provider and
+    as a layer on top of another provider (see _merge_overrides)."""
+    raw=json.load(open(path,encoding="utf-8"))
     by_num={m["num"]:m for m in S if m["num"]}
     out={}
     for k,v in raw.items():
@@ -304,8 +305,21 @@ def provider_manual(args, log):
         for f1 in ("home_score","away_score","status"):
             if v.get(f1) is not None: ov[f1]=v[f1]
         out[target["seq"]]=ov
+    return out
+
+def provider_manual(args, log):
+    if not args.overrides: sys.exit("manual provider needs --overrides PATH")
+    out=_manual_overrides(args.overrides, log)
     log.append(f"  manual: {len(out)} overrides applied")
     return out
+
+def _merge_overrides(base, manual):
+    """Layer manual overrides on top of base (provider) overrides; manual wins
+    per field, so an asserted home team coexists with a provider-supplied away
+    team, score, status, and authoritative kickoff (utc)."""
+    for seq, ov in manual.items():
+        base.setdefault(seq, {}).update(ov)
+    return base
 
 PROVIDERS={"none":provider_none,"footballdata":provider_footballdata,"manual":provider_manual}
 
@@ -377,11 +391,16 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--provider",choices=PROVIDERS,default="none")
     ap.add_argument("--token",help="football-data.org API token")
-    ap.add_argument("--overrides",help="overrides.json for manual provider")
+    ap.add_argument("--overrides",help="overrides.json: the manual provider's source, "
+                    "or a layer applied on top of another provider (manual wins per field)")
     ap.add_argument("--out",default="fifa-world-cup-2026.ics")
     args=ap.parse_args()
     log=[]
     overrides=PROVIDERS[args.provider](args,log)
+    if args.overrides and args.provider!="manual":
+        manual=_manual_overrides(args.overrides, log)
+        _merge_overrides(overrides, manual)
+        log.append(f"  manual layer: {len(manual)} overrides merged on top of {args.provider}")
     ics=build(overrides)
     open(args.out,"w",encoding="utf-8").write(ics)
     resolved=sum(1 for m in S if m["seq"] in overrides and ("home" in overrides[m["seq"]] or "away" in overrides[m["seq"]]))

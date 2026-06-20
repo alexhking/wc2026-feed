@@ -35,11 +35,13 @@ jobs:
           FD_TOKEN: ${{ secrets.FD_TOKEN }}   # football-data.org token (repo secret)
         run: |
           mkdir -p public
-          # Use the live provider if a token is set, else fall back to the manual
-          # overrides file (or pure scaffold if neither exists).
+          # Use the live provider if a token is set (layering overrides.json on
+          # top when present), else fall back to the manual overrides file (or
+          # pure scaffold if neither exists).
           if [ -n "$FD_TOKEN" ]; then
+            OVR=""; [ -f overrides.json ] && OVR="--overrides overrides.json"
             python wc2026_feed.py --provider footballdata --token "$FD_TOKEN" \
-              --out public/fifa-world-cup-2026.ics
+              $OVR --out public/fifa-world-cup-2026.ics
           elif [ -f overrides.json ]; then
             python wc2026_feed.py --provider manual --overrides overrides.json \
               --out public/fifa-world-cup-2026.ics
