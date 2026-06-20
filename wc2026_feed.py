@@ -130,7 +130,7 @@ g(6,13,18,0,"Brazil","Morocco","MET","C",1); g(6,13,21,0,"Haiti","Scotland","GIL
 g(6,19,18,0,"Scotland","Morocco","GIL","C",2); g(6,19,20,30,"Brazil","Haiti","LFF","C",2)
 g(6,24,18,0,"Scotland","Brazil","HRS","C",3); g(6,24,18,0,"Morocco","Haiti","MBS","C",3)
 g(6,12,21,0,"USA","Paraguay","SOF","D",1); g(6,14,0,0,"Australia","T\u00fcrkiye","BCP","D",1)
-g(6,19,15,0,"USA","Australia","LUM","D",2); g(6,20,0,0,"T\u00fcrkiye","Paraguay","LEV","D",2)
+g(6,19,15,0,"USA","Australia","LUM","D",2); g(6,19,23,0,"T\u00fcrkiye","Paraguay","LEV","D",2)
 g(6,25,22,0,"T\u00fcrkiye","USA","SOF","D",3); g(6,25,22,0,"Paraguay","Australia","LEV","D",3)
 g(6,14,13,0,"Germany","Cura\u00e7ao","NRG","E",1); g(6,14,19,0,"Ivory Coast","Ecuador","LFF","E",1)
 g(6,20,16,0,"Germany","Ivory Coast","BMO","E",2); g(6,20,20,0,"Ecuador","Cura\u00e7ao","ARR","E",2)
