@@ -255,11 +255,8 @@ def _fd_get(url, token, log, attempts=2):
             sys.exit(f"football-data error {e.code}: {e.read().decode()[:200]}")
     sys.exit("football-data: exhausted retries")
 
-def provider_footballdata(args, log):
-    if not args.token:
-        sys.exit("football-data provider needs --token (free key from football-data.org).")
-    url="https://api.football-data.org/v4/competitions/WC/matches"
-    data=_fd_get(url, args.token, log)
+def _fd_to_fixtures(data):
+    """Convert a football-data.org /matches payload into internal fixture dicts."""
     fx=[]
     for m in data.get("matches",[]):
         try: utc=datetime.strptime(m["utcDate"],"%Y-%m-%dT%H:%M:%SZ")
@@ -270,6 +267,14 @@ def provider_footballdata(args, log):
                        hs=ft.get("home"),
                        **{"as":ft.get("away")}, status=m.get("status"),
                        city=None))
+    return fx
+
+def provider_footballdata(args, log):
+    if not args.token:
+        sys.exit("football-data provider needs --token (free key from football-data.org).")
+    url="https://api.football-data.org/v4/competitions/WC/matches"
+    data=_fd_get(url, args.token, log)
+    fx=_fd_to_fixtures(data)
     log.append(f"  football-data: {len(fx)} fixtures fetched")
     return _assign(fx, log)
 
