@@ -6,6 +6,7 @@ spec = importlib.util.spec_from_file_location("wc2026_feed", os.path.join(ROOT, 
 wc = importlib.util.module_from_spec(spec); spec.loader.exec_module(wc)
 
 FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "wc_matches_sample.json")
+OVERRIDES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "overrides_sample.json")
 def load_fixture(): return json.load(open(FIXTURE, encoding="utf-8"))
 
 def parse_ics(ics):
@@ -84,6 +85,30 @@ def test_group_events_match_provider_utc_end_to_end():
         assert hit, (m["homeTeam"]["name"], compact)
         got.add(compact)
     assert got == want, got
+
+
+def test_manual_overrides_parses_match_number():
+    out = wc._manual_overrides(OVERRIDES, [])
+    # Match 79 ("Winner Group A") -> its scaffold seq -> {"home": "Mexico"}
+    by_num = {m["num"]: m for m in wc.S if m["num"]}
+    seq79 = by_num[79]["seq"]
+    assert out == {seq79: {"home": "Mexico"}}, out
+
+def test_merge_overrides_manual_wins_per_field():
+    dt = __import__("datetime").datetime(2026, 6, 30, 21, 0)
+    base = {79: {"away": "Best 3rd", "utc": dt}}
+    merged = wc._merge_overrides(base, {79: {"home": "Mexico"}})
+    assert merged[79] == {"away": "Best 3rd", "utc": dt, "home": "Mexico"}, merged[79]
+
+def test_merge_overrides_manual_overwrites_conflicting_field():
+    merged = wc._merge_overrides({79: {"home": "Stale"}}, {79: {"home": "Mexico"}})
+    assert merged[79]["home"] == "Mexico", merged[79]
+
+def test_manual_layer_resolves_match_79_end_to_end():
+    merged = wc._merge_overrides({}, wc._manual_overrides(OVERRIDES, []))
+    ev = parse_ics(wc.build(merged))
+    m79 = next(e for e in ev.values() if "(Match 79)" in e.get("SUMMARY", ""))
+    assert "Mexico" in m79["SUMMARY"], m79["SUMMARY"]
 
 
 if __name__ == "__main__":
