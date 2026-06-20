@@ -336,10 +336,16 @@ def build(overrides):
         name,city,country,cap,fifaname,lat,lon,off=V[m["vk"]]
         ov=overrides.get(m["seq"],{})
         home=ov.get("home",m["home"]); away=ov.get("away",m["away"])
-        utc=utc_of(m); dtstart=utc.strftime("%Y%m%dT%H%M%SZ")
+        if ov.get("utc") is not None:
+            utc=ov["utc"]
+            et_dt=utc-timedelta(hours=4)              # provider UTC -> ET (EDT)
+        else:
+            utc=utc_of(m)
+            et_dt=datetime(2026,m["mo"],m["d"],m["h"],m["mi"])  # scaffold ET wall-clock
+        dtstart=utc.strftime("%Y%m%dT%H%M%SZ")
         dtend=(utc+timedelta(hours=2)).strftime("%Y%m%dT%H%M%SZ")
-        et=fmt12(m["h"],m["mi"])
-        loc_dt=datetime(2026,m["mo"],m["d"],m["h"],m["mi"])+timedelta(hours=off)
+        et=fmt12(et_dt.hour,et_dt.minute)
+        loc_dt=et_dt+timedelta(hours=off)
         local=fmt12(loc_dt.hour,loc_dt.minute)
         # score string if finished
         hs,as_=ov.get("home_score"),ov.get("away_score")

@@ -43,6 +43,31 @@ def test_assign_no_utc_for_tbd_knockout():
     assert ov.get(73, {}).get("status") == "TIMED", ov.get(73)  # still overlays status
 
 
+def test_build_uses_provider_utc():
+    ov = wc._assign(wc._fd_to_fixtures(load_fixture()), [])
+    ev = parse_ics(wc.build(ov))
+    mex = event(ev, "wc2026-001-AZT")          # Mexico, provider 20:00Z (off=-2)
+    assert mex["DTSTART"] == "20260611T200000Z", mex["DTSTART"]
+    assert "4:00 PM ET" in mex["DESCRIPTION"], mex["DESCRIPTION"]
+    assert "2:00 PM local" in mex["DESCRIPTION"], mex["DESCRIPTION"]
+    tur = event(ev, "wc2026-022-LEV")          # Türkiye, provider 03:00Z (off=-3)
+    assert tur["DTSTART"] == "20260620T030000Z", tur["DTSTART"]
+    assert "11:00 PM ET" in tur["DESCRIPTION"], tur["DESCRIPTION"]
+    assert "8:00 PM local" in tur["DESCRIPTION"], tur["DESCRIPTION"]
+
+def test_build_falls_back_to_scaffold_for_weak_match():
+    ov = wc._assign(wc._fd_to_fixtures(load_fixture()), [])
+    ev = parse_ics(wc.build(ov))
+    ko = event(ev, "wc2026-073-SOF")           # provider 19:30Z but not confident
+    assert ko["DTSTART"] == "20260628T190000Z", ko["DTSTART"]   # scaffold 19:00Z wins
+
+def test_build_scaffold_unchanged_with_no_overrides():
+    ev = parse_ics(wc.build({}))
+    mex = event(ev, "wc2026-001-AZT")
+    assert mex["DTSTART"] == "20260611T190000Z", mex["DTSTART"]  # scaffold 15:00 ET
+    assert "3:00 PM ET" in mex["DESCRIPTION"], mex["DESCRIPTION"]
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     fails = 0
