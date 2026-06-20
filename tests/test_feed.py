@@ -68,6 +68,24 @@ def test_build_scaffold_unchanged_with_no_overrides():
     assert "3:00 PM ET" in mex["DESCRIPTION"], mex["DESCRIPTION"]
 
 
+def test_group_events_match_provider_utc_end_to_end():
+    data = load_fixture()
+    ov = wc._assign(wc._fd_to_fixtures(data), [])
+    ev = parse_ics(wc.build(ov))
+    want = {"20260611T200000Z", "20260620T030000Z"}   # the two group fixtures
+    got = set()
+    for m in data["matches"]:
+        if m["stage"] != "GROUP_STAGE": continue
+        compact = m["utcDate"].replace("-", "").replace(":", "")
+        # find the event whose teams match and confirm DTSTART == provider time
+        hit = [e for e in ev.values()
+               if wc.canon(m["homeTeam"]["name"]) in e.get("SUMMARY", "")
+               and e["DTSTART"] == compact]
+        assert hit, (m["homeTeam"]["name"], compact)
+        got.add(compact)
+    assert got == want, got
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     fails = 0
