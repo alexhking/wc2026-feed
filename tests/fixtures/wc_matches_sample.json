@@ -1,0 +1,13 @@
+{
+  "matches": [
+    {"utcDate": "2026-06-11T20:00:00Z", "status": "FINISHED", "stage": "GROUP_STAGE", "group": "GROUP_A",
+     "homeTeam": {"name": "Mexico"}, "awayTeam": {"name": "South Africa"},
+     "score": {"fullTime": {"home": 2, "away": 0}}},
+    {"utcDate": "2026-06-20T03:00:00Z", "status": "FINISHED", "stage": "GROUP_STAGE", "group": "GROUP_D",
+     "homeTeam": {"name": "Turkey"}, "awayTeam": {"name": "Paraguay"},
+     "score": {"fullTime": {"home": 0, "away": 1}}},
+    {"utcDate": "2026-06-28T19:30:00Z", "status": "TIMED", "stage": "LAST_32", "group": null,
+     "homeTeam": null, "awayTeam": null,
+     "score": {"fullTime": {"home": null, "away": null}}}
+  ]
+}

@@ -204,18 +204,19 @@ def _assign(fixtures, log):
     """fixtures: list of dicts with utc(datetime), home, away, hs, as, status, city(optional)."""
     out={}
     for fx in fixtures:
-        best=None;best_score=-1
+        best=None;best_score=-1;best_confident=False
         for m in S:
             mu=utc_of(m)
             dt=abs((mu-fx["utc"]).total_seconds())/60.0
             if dt>180: continue                      # must be same kickoff window
             sc=100-dt                                 # closer time = better
+            confident=False
             if fx.get("city") and fx["city"].lower() in V[m["vk"]][1].lower():
-                sc+=200                                # venue/city match is decisive
+                sc+=200; confident=True                # venue/city match is decisive
             # team-name overlap (helps disambiguate simultaneous group games)
             names={canon(fx.get("home")),canon(fx.get("away"))}-{None}
-            if names & {m["home"],m["away"]}: sc+=120
-            if sc>best_score: best_score=sc;best=m
+            if names & {m["home"],m["away"]}: sc+=120; confident=True
+            if sc>best_score: best_score=sc;best=m;best_confident=confident
         if best is None:
             log.append(f"  ! no scaffold slot for {fx.get('home')} v {fx.get('away')} @ {fx['utc']}")
             continue
@@ -226,6 +227,8 @@ def _assign(fixtures, log):
         if fx.get("hs") is not None: ov["home_score"]=fx["hs"]
         if fx.get("as") is not None: ov["away_score"]=fx["as"]
         if fx.get("status"): ov["status"]=fx["status"]
+        # authoritative kickoff: only when a non-time signal confirmed the slot
+        if best_confident: ov["utc"]=fx["utc"]
         if ov: out[best["seq"]]=ov
     return out
 
@@ -255,11 +258,8 @@ def _fd_get(url, token, log, attempts=2):
             sys.exit(f"football-data error {e.code}: {e.read().decode()[:200]}")
     sys.exit("football-data: exhausted retries")
 
-def provider_footballdata(args, log):
-    if not args.token:
-        sys.exit("football-data provider needs --token (free key from football-data.org).")
-    url="https://api.football-data.org/v4/competitions/WC/matches"
-    data=_fd_get(url, args.token, log)
+def _fd_to_fixtures(data):
+    """Convert a football-data.org /matches payload into internal fixture dicts."""
     fx=[]
     for m in data.get("matches",[]):
         try: utc=datetime.strptime(m["utcDate"],"%Y-%m-%dT%H:%M:%SZ")
@@ -270,6 +270,14 @@ def provider_footballdata(args, log):
                        hs=ft.get("home"),
                        **{"as":ft.get("away")}, status=m.get("status"),
                        city=None))
+    return fx
+
+def provider_footballdata(args, log):
+    if not args.token:
+        sys.exit("football-data provider needs --token (free key from football-data.org).")
+    url="https://api.football-data.org/v4/competitions/WC/matches"
+    data=_fd_get(url, args.token, log)
+    fx=_fd_to_fixtures(data)
     log.append(f"  football-data: {len(fx)} fixtures fetched")
     return _assign(fx, log)
 
@@ -328,10 +336,16 @@ def build(overrides):
         name,city,country,cap,fifaname,lat,lon,off=V[m["vk"]]
         ov=overrides.get(m["seq"],{})
         home=ov.get("home",m["home"]); away=ov.get("away",m["away"])
-        utc=utc_of(m); dtstart=utc.strftime("%Y%m%dT%H%M%SZ")
+        if ov.get("utc") is not None:
+            utc=ov["utc"]
+            et_dt=utc-timedelta(hours=4)              # provider UTC -> ET (EDT)
+        else:
+            utc=utc_of(m)
+            et_dt=datetime(2026,m["mo"],m["d"],m["h"],m["mi"])  # scaffold ET wall-clock
+        dtstart=utc.strftime("%Y%m%dT%H%M%SZ")
         dtend=(utc+timedelta(hours=2)).strftime("%Y%m%dT%H%M%SZ")
-        et=fmt12(m["h"],m["mi"])
-        loc_dt=datetime(2026,m["mo"],m["d"],m["h"],m["mi"])+timedelta(hours=off)
+        et=fmt12(et_dt.hour,et_dt.minute)
+        loc_dt=et_dt+timedelta(hours=off)
         local=fmt12(loc_dt.hour,loc_dt.minute)
         # score string if finished
         hs,as_=ov.get("home_score"),ov.get("away_score")

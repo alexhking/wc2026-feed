@@ -27,6 +27,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Run tests
+        run: python3 tests/test_feed.py
+
       - name: Build feed
         env:
           FD_TOKEN: ${{ secrets.FD_TOKEN }}   # football-data.org token (repo secret)
