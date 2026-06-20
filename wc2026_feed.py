@@ -204,18 +204,19 @@ def _assign(fixtures, log):
     """fixtures: list of dicts with utc(datetime), home, away, hs, as, status, city(optional)."""
     out={}
     for fx in fixtures:
-        best=None;best_score=-1
+        best=None;best_score=-1;best_confident=False
         for m in S:
             mu=utc_of(m)
             dt=abs((mu-fx["utc"]).total_seconds())/60.0
             if dt>180: continue                      # must be same kickoff window
             sc=100-dt                                 # closer time = better
+            confident=False
             if fx.get("city") and fx["city"].lower() in V[m["vk"]][1].lower():
-                sc+=200                                # venue/city match is decisive
+                sc+=200; confident=True                # venue/city match is decisive
             # team-name overlap (helps disambiguate simultaneous group games)
             names={canon(fx.get("home")),canon(fx.get("away"))}-{None}
-            if names & {m["home"],m["away"]}: sc+=120
-            if sc>best_score: best_score=sc;best=m
+            if names & {m["home"],m["away"]}: sc+=120; confident=True
+            if sc>best_score: best_score=sc;best=m;best_confident=confident
         if best is None:
             log.append(f"  ! no scaffold slot for {fx.get('home')} v {fx.get('away')} @ {fx['utc']}")
             continue
@@ -226,6 +227,8 @@ def _assign(fixtures, log):
         if fx.get("hs") is not None: ov["home_score"]=fx["hs"]
         if fx.get("as") is not None: ov["away_score"]=fx["as"]
         if fx.get("status"): ov["status"]=fx["status"]
+        # authoritative kickoff: only when a non-time signal confirmed the slot
+        if best_confident: ov["utc"]=fx["utc"]
         if ov: out[best["seq"]]=ov
     return out
 

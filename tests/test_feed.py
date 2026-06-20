@@ -31,6 +31,18 @@ def test_fd_to_fixtures_parses_sample():
     assert ko["away"] is None and ko["hs"] is None
 
 
+def test_assign_attaches_utc_for_group_match():
+    ov = wc._assign(wc._fd_to_fixtures(load_fixture()), [])
+    # Mexico vs South Africa is seq 1 (confident: team-name overlap) -> utc attached
+    assert ov[1].get("utc") == __import__("datetime").datetime(2026, 6, 11, 20, 0), ov.get(1)
+
+def test_assign_no_utc_for_tbd_knockout():
+    ov = wc._assign(wc._fd_to_fixtures(load_fixture()), [])
+    # The null-team LAST_32 fixture matches scaffold seq 73 by time only -> NO utc
+    assert "utc" not in ov.get(73, {}), ov.get(73)
+    assert ov.get(73, {}).get("status") == "TIMED", ov.get(73)  # still overlays status
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     fails = 0
