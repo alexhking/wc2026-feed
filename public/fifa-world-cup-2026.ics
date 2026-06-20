@@ -252,11 +252,11 @@ END:VEVENT
 BEGIN:VEVENT
 UID:wc2026-016-LFF@worldcup2026
 DTSTAMP:20260620T012537Z
-DTSTART:20260620T010000Z
-DTEND:20260620T030000Z
+DTSTART:20260620T003000Z
+DTEND:20260620T023000Z
 SUMMARY:🇧🇷 Brazil vs 🇭🇹 Haiti (2–0)
 LOCATION:Lincoln Financial Field\, Philadelphia\, USA
-DESCRIPTION:Group C · Matchday 2\nKickoff: 9:00 PM ET (local)\nVenue: Li
+DESCRIPTION:Group C · Matchday 2\nKickoff: 8:30 PM ET (local)\nVenue: Li
  ncoln Financial Field (Philadelphia Stadium)\nCity: Philadelphia\, USA\n
  Capacity: ~69,000\nUS broadcast: FOX (English)\, Telemundo/Universo (Spa
  nish) · stream Peacock/Fubo
