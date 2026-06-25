@@ -91,6 +91,61 @@ def test_pending_match_makes_tie_ambiguous_block():
     assert bw["A"][0] != bw["A"][1], bw          # spread, not pinned
     assert bw["A"] == bw["B"], (bw["A"], bw["B"])
 
+def test_clinched_winner_when_rival_cannot_catch_or_loses_h2h():
+    # Group D, pre-matchday-3 (USA already 6 pts, beat both rivals it played).
+    # USA's last match (vs Türkiye) and Paraguay-Australia are pending.
+    M = [
+        _M("USA", "Paraguay", 2, 0, True),       # USA +3
+        _M("Australia", "Türkiye", 1, 0, True),  # AUS +3
+        _M("USA", "Australia", 1, 0, True),      # USA +3 (=6), beat AUS (H2H)
+        _M("Türkiye", "Paraguay", 0, 0, True),   # draw: TUR 1, PRY 1
+        _M("Türkiye", "USA", played=False), # PENDING (index 4)
+        _M("Paraguay", "Australia", played=False),    # PENDING (index 5)
+    ]
+    pins = cl.clinched_positions(M)
+    # USA guaranteed 1st: TUR max = 1+3 = 4 < 6; AUS max = 3+3 = 6 but USA won H2H.
+    assert pins.get("USA") == 1, pins
+    # Nobody else is pinned to an exact placement yet.
+    assert set(pins) == {"USA"}, pins
+
+def test_clinched_both_places_in_finished_group():
+    M = [
+        _M("Mexico", "South Africa", 2, 0, True),
+        _M("South Korea", "Czechia", 1, 0, True),
+        _M("Czechia", "South Africa", 0, 1, True),
+        _M("Mexico", "South Korea", 1, 0, True),
+        _M("Czechia", "Mexico", 0, 1, True),
+        _M("South Africa", "South Korea", 1, 0, True),
+    ]
+    # Mexico 9, South Africa 6, South Korea 3, Czechia 0
+    pins = cl.clinched_positions(M)
+    assert pins == {"Mexico": 1, "South Africa": 2}, pins
+
+def test_no_clinch_when_placement_hangs_on_pending_goal_difference():
+    # Leader not yet separable from a rival because the deciding rung is GD and a
+    # contributing match is still pending -> emit nothing.
+    M = [
+        _M("A", "B", 1, 1, True),
+        _M("A", "C", 1, 0, True),
+        _M("D", "A", played=False),   # PENDING
+        _M("B", "C", 1, 0, True),
+        _M("D", "B", played=False),   # PENDING
+        _M("C", "D", played=False),   # PENDING
+    ]
+    pins = cl.clinched_positions(M)
+    assert pins == {}, pins
+
+def test_resolve_maps_pins_to_clinched_json_dict():
+    # Group A finished -> Mexico winner (79 home), South Africa runner-up (73 home)
+    assigned = {}
+    # seq -> override; use scaffold seqs for Group A's six matches (seq 1..6)
+    scores = {1: (2, 0), 2: (1, 0), 3: (0, 1), 4: (1, 0), 5: (0, 1), 6: (1, 0)}
+    for seq, (h, a) in scores.items():
+        assigned[seq] = {"home_score": h, "away_score": a, "status": "FINISHED"}
+    out = cl.resolve(assigned)
+    assert out.get("79") == {"home": "Mexico"}, out.get("79")
+    assert out.get("73", {}).get("home") == "South Africa", out.get("73")
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     fails = 0

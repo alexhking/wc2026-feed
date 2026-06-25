@@ -135,3 +135,40 @@ def best_worst(matches, branch):
             res[t] = (best, worst)
         idx += len(block)
     return res
+
+def clinched_positions(matches):
+    """Return {team: 1 or 2} for teams guaranteed exactly 1st / exactly 2nd
+    across every Win/Draw/Loss completion of the pending matches."""
+    teams = _teams(matches)
+    pending = [i for i, m in enumerate(matches) if not m["played"]]
+    g1 = {t: True for t in teams}     # still possibly-guaranteed 1st
+    g2 = {t: True for t in teams}     # still possibly-guaranteed exactly 2nd
+    for combo in itertools.product("HDA", repeat=len(pending)):
+        branch = dict(zip(pending, combo))
+        bw = best_worst(matches, branch)
+        for t in teams:
+            b, w = bw[t]
+            if not (b == 1 and w == 1): g1[t] = False
+            if not (b == 2 and w == 2): g2[t] = False
+    out = {}
+    for t in teams:
+        if g1[t]: out[t] = 1
+        elif g2[t]: out[t] = 2
+    return out
+
+def resolve(assigned):
+    """assigned: {seq: override} from _assign. Returns {str(num): {side: team}}
+    suitable for clinched.json. Winners and runners-up only."""
+    groups = build_group_results(assigned)
+    smap = slot_map()
+    out = {}
+    for grp in GROUPS:
+        pins = clinched_positions(groups[grp])
+        for team, pos in pins.items():
+            placement = "W" if pos == 1 else "R"
+            slot = smap.get((grp, placement))
+            if not slot:
+                continue
+            num, side = slot
+            out.setdefault(str(num), {})[side] = team
+    return out
