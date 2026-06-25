@@ -159,6 +159,13 @@ g(6,27,17,0,"Panama","England","MET","L",3); g(6,27,17,0,"Croatia","Ghana","LFF"
 
 # --- Knockouts (official match numbers) ---
 R32="Round of 32";R16="Round of 16";QF="Quarter-final";SF="Semi-final";TP="Third-place play-off";FN="Final"
+# Per-round emoji shown as the SUMMARY lead for knockout events.
+ROUND_EMOJI={R32:"\U0001F3DF️",  # stadium
+             R16:"\U0001F480",         # skull
+             QF:"⚔️",         # crossed swords
+             SF:"\U0001F396️",     # military medal
+             TP:"\U0001F949",           # 3rd-place medal
+             FN:"\U0001F3C6"}           # trophy
 ko(6,28,15,0,"Runner-up Group A","Runner-up Group B","SOF",R32,73)
 ko(6,29,13,0,"Winner Group C","Runner-up Group F","NRG",R32,76)
 ko(6,29,16,30,"Winner Group E","Best 3rd (A/B/C/D/F)","GIL",R32,74)
@@ -374,7 +381,7 @@ def build(overrides):
             cats=f"FIFA World Cup 2026,Group Stage,Group {m['grp']}"
         else:
             lead=(fh+" " if fh else "")+home; trail=(fa+" " if fa else "")+away
-            summary=f"{TROPHY} {m['rnd']}: {lead} vs {trail}{score} (Match {m['num']})"
+            summary=f"{ROUND_EMOJI.get(m['rnd'],TROPHY)} {m['rnd']}: {lead} vs {trail}{score} (Match {m['num']})"
             roundlabel=f"{m['rnd']} \u00b7 Match {m['num']}"
             cats=f"FIFA World Cup 2026,Knockouts,{m['rnd']}"
         timeline=(f"Kickoff: {et} ET (local)" if off==0

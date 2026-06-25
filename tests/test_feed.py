@@ -128,6 +128,18 @@ def test_clinched_layer_fills_when_no_hand_override():
     assert base[seq76]["home"] == "Brazil", base[seq76]
 
 
+def test_knockout_round_emojis():
+    ev = parse_ics(wc.build({}))
+    def summ(n):
+        return next(e for e in ev.values() if f"(Match {n})" in e.get("SUMMARY", ""))["SUMMARY"]
+    assert summ(79).startswith("\U0001F3DF"), summ(79)    # Round of 32   stadium
+    assert summ(90).startswith("\U0001F480"), summ(90)    # Round of 16   skull
+    assert summ(97).startswith("⚔"), summ(97)        # Quarter-final crossed swords
+    assert summ(101).startswith("\U0001F396"), summ(101)  # Semi-final    medal
+    assert summ(103).startswith("\U0001F949"), summ(103)  # Third place   bronze medal
+    assert summ(104).startswith("\U0001F3C6"), summ(104)  # Final         trophy
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     fails = 0
