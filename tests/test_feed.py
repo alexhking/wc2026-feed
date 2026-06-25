@@ -111,6 +111,23 @@ def test_manual_layer_resolves_match_79_end_to_end():
     assert "Mexico" in m79["SUMMARY"], m79["SUMMARY"]
 
 
+def test_clinched_layer_below_overrides_hand_wins():
+    # clinched asserts Brazil for match 79; hand override asserts Mexico -> hand wins
+    base = {}
+    wc._merge_overrides(base, wc._manual_overrides_from_dict({"79": {"home": "Brazil"}}, []))
+    wc._merge_overrides(base, wc._manual_overrides_from_dict({"79": {"home": "Mexico"}}, []))
+    by_num = {m["num"]: m for m in wc.S if m["num"]}
+    seq79 = by_num[79]["seq"]
+    assert base[seq79]["home"] == "Mexico", base[seq79]
+
+def test_clinched_layer_fills_when_no_hand_override():
+    base = {}
+    wc._merge_overrides(base, wc._manual_overrides_from_dict({"76": {"home": "Brazil"}}, []))
+    by_num = {m["num"]: m for m in wc.S if m["num"]}
+    seq76 = by_num[76]["seq"]
+    assert base[seq76]["home"] == "Brazil", base[seq76]
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     fails = 0
