@@ -281,11 +281,9 @@ def provider_footballdata(args, log):
     log.append(f"  football-data: {len(fx)} fixtures fetched")
     return _assign(fx, log)
 
-def _manual_overrides(path, log):
-    """Parse an overrides.json into {seq: override}. Keyed by official match
-    number (str/int) or 'YYYY-MM-DD@City'. Used both by the manual provider and
-    as a layer on top of another provider (see _merge_overrides)."""
-    raw=json.load(open(path,encoding="utf-8"))
+def _manual_overrides_from_dict(raw, log):
+    """Parse a {key: override} dict into {seq: override}. Keyed by official match
+    number (str/int) or 'YYYY-MM-DD@City'."""
     by_num={m["num"]:m for m in S if m["num"]}
     out={}
     for k,v in raw.items():
@@ -306,6 +304,11 @@ def _manual_overrides(path, log):
             if v.get(f1) is not None: ov[f1]=v[f1]
         out[target["seq"]]=ov
     return out
+
+def _manual_overrides(path, log):
+    """Parse an overrides.json file into {seq: override}."""
+    raw=json.load(open(path,encoding="utf-8"))
+    return _manual_overrides_from_dict(raw, log)
 
 def provider_manual(args, log):
     if not args.overrides: sys.exit("manual provider needs --overrides PATH")
@@ -391,12 +394,18 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--provider",choices=PROVIDERS,default="none")
     ap.add_argument("--token",help="football-data.org API token")
+    ap.add_argument("--clinched",help="machine-generated clinched.json layer "
+                    "(applied below --overrides; hand overrides win)")
     ap.add_argument("--overrides",help="overrides.json: the manual provider's source, "
                     "or a layer applied on top of another provider (manual wins per field)")
     ap.add_argument("--out",default="fifa-world-cup-2026.ics")
     args=ap.parse_args()
     log=[]
     overrides=PROVIDERS[args.provider](args,log)
+    if args.clinched and args.provider!="manual":
+        clinched=_manual_overrides(args.clinched, log)
+        _merge_overrides(overrides, clinched)
+        log.append(f"  clinched layer: {len(clinched)} overrides merged on top of {args.provider}")
     if args.overrides and args.provider!="manual":
         manual=_manual_overrides(args.overrides, log)
         _merge_overrides(overrides, manual)
