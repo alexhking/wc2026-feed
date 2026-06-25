@@ -28,7 +28,18 @@ jobs:
           python-version: "3.12"
 
       - name: Run tests
-        run: python3 tests/test_feed.py
+        run: |
+          python3 tests/test_feed.py
+          python3 tests/test_clinch.py
+
+      - name: Resolve clinched slots
+        env:
+          FD_TOKEN: ${{ secrets.FD_TOKEN }}
+        run: |
+          if [ -n "$FD_TOKEN" ]; then
+            python3 wc2026_clinch.py --token "$FD_TOKEN" --out clinched.json || \
+              echo "clinch resolver failed; keeping existing clinched.json"
+          fi
 
       - name: Build feed
         env:
@@ -40,8 +51,9 @@ jobs:
           # pure scaffold if neither exists).
           if [ -n "$FD_TOKEN" ]; then
             OVR=""; [ -f overrides.json ] && OVR="--overrides overrides.json"
+            CLN=""; [ -f clinched.json ] && CLN="--clinched clinched.json"
             python wc2026_feed.py --provider footballdata --token "$FD_TOKEN" \
-              $OVR --out public/fifa-world-cup-2026.ics
+              $CLN $OVR --out public/fifa-world-cup-2026.ics
           elif [ -f overrides.json ]; then
             python wc2026_feed.py --provider manual --overrides overrides.json \
               --out public/fifa-world-cup-2026.ics
@@ -53,6 +65,6 @@ jobs:
         run: |
           git config user.name  "wc-feed-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add public/fifa-world-cup-2026.ics public/_headers 2>/dev/null || true
+          git add public/fifa-world-cup-2026.ics public/_headers clinched.json 2>/dev/null || true
           git diff --cached --quiet && echo "no change" || git commit -m "feed: refresh $(date -u +%FT%TZ)"
           git push
