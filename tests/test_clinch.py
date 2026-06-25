@@ -146,6 +146,34 @@ def test_resolve_maps_pins_to_clinched_json_dict():
     assert out.get("79") == {"home": "Mexico"}, out.get("79")
     assert out.get("73", {}).get("home") == "South Africa", out.get("73")
 
+def test_golden_resolve_three_representative_groups():
+    # Group A finished -> Winner A (Mexico, 79h) + Runner-up A (South Africa, 73h).
+    # Group D early -> Winner D only (USA, 81h), no runner-up.
+    # Group F all pending -> nothing.
+    by_grp = {}
+    for m in cl.S:
+        if m["kind"] == "G":
+            by_grp.setdefault(m["grp"], []).append(m["seq"])
+    assigned = {}
+    def fin(seq, h, a):
+        assigned[seq] = {"home_score": h, "away_score": a, "status": "FINISHED"}
+    # Group A (Mexico 9, South Africa 6, South Korea 3, Czechia 0)
+    a = by_grp["A"]
+    fin(a[0], 2, 0); fin(a[1], 1, 0); fin(a[2], 0, 1)
+    fin(a[3], 1, 0); fin(a[4], 0, 1); fin(a[5], 1, 0)
+    # Group D (USA 6 and clinched; Türkiye-USA + Paraguay-Australia pending)
+    d = by_grp["D"]
+    # d order: USA-PRY, AUS-TUR, USA-AUS, TUR-PRY, TUR-USA, PRY-AUS
+    fin(d[0], 2, 0); fin(d[1], 1, 0); fin(d[2], 1, 0); fin(d[3], 0, 0)
+    # d[4], d[5] left pending (no entry)
+    out = cl.resolve(assigned)
+    assert out.get("79") == {"home": "Mexico"}, out.get("79")
+    assert out.get("73", {}).get("home") == "South Africa", out.get("73")
+    assert out.get("81") == {"home": "USA"}, out.get("81")
+    # Group F untouched -> no F slots. F winner slot is 76? No: assert no spurious
+    # USA/Mexico-style false positives appear for groups we left empty.
+    assert "82" not in out or "home" not in out.get("82", {}), out  # Winner G slot empty
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     fails = 0

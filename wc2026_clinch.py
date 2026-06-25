@@ -172,3 +172,28 @@ def resolve(assigned):
             num, side = slot
             out.setdefault(str(num), {})[side] = team
     return out
+
+def fetch_and_resolve(token, log):
+    url = "https://api.football-data.org/v4/competitions/WC/matches"
+    data = _fd_get(url, token, log)
+    fx = _fd_to_fixtures(data)
+    assigned = _assign(fx, log)
+    return resolve(assigned)
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--token", required=True, help="football-data.org API token")
+    ap.add_argument("--out", default="clinched.json")
+    args = ap.parse_args()
+    log = []
+    # _fd_get sys.exit()s on hard failure -> we never overwrite a good file.
+    result = fetch_and_resolve(args.token, log)
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2, sort_keys=True, ensure_ascii=False)
+        f.write("\n")
+    print(f"clinched: {len(result)} match slots resolved -> {args.out}")
+    for line in log:
+        print(line)
+
+if __name__ == "__main__":
+    main()
