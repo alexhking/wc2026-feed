@@ -79,43 +79,43 @@ def _gd_gf(subset, decided):
         if d["away"] in subset: gd[d["away"]] += d["as"] - d["hs"]; gf[d["away"]] += d["as"]
     return gd, gf
 
-def _resolve_subtie(sub, decided):
-    """sub: teams tied on points AND head-to-head points. Resolve via H2H GD,
-    H2H goals, overall GD, overall goals -- but only using rungs whose matches
-    are all played. Returns ordered list of blocks (ambiguous ties stay grouped)."""
-    if len(sub) == 1:
-        return [list(sub)]
-    internal = [d for d in decided if d["home"] in sub and d["away"] in sub]
-    if any(d["hs"] is None for d in internal):
-        return [list(sub)]                       # H2H GD undecidable -> ambiguous
-    overall_known = all(d["hs"] is not None for t in sub for d in decided
-                        if t in (d["home"], d["away"]))
-    hgd, hgf = _gd_gf(sub, internal)
-    ogd, ogf = _gd_gf(sub, decided)
-    def key(t):
-        k = [hgd[t], hgf[t]]
-        if overall_known: k += [ogd[t], ogf[t]]
-        return tuple(k)
-    blocks = []
-    for kv in sorted({key(t) for t in sub}, reverse=True):
-        grp = sorted(t for t in sub if key(t) == kv)
-        if len(grp) == 1:
-            blocks.append(grp)
-        else:
-            blocks.append(grp)                   # equal key (or unknown overall) -> ambiguous
-    return blocks
+def _split_by(teams, score):
+    """Group teams by `score(team)` (higher is better); return groups ordered
+    best-to-worst, each group a sorted list of teams sharing that score."""
+    buckets = {}
+    for t in teams:
+        buckets.setdefault(score(t), []).append(t)
+    return [sorted(buckets[k]) for k in sorted(buckets, reverse=True)]
 
-def _resolve_tie(tied, decided):
-    """tied: teams equal on points. Split by head-to-head points, then subtie."""
-    if len(tied) == 1:
-        return [list(tied)]
-    internal = [d for d in decided if d["home"] in tied and d["away"] in tied]
-    h2h = _points(tied, internal)
-    blocks = []
-    for hv in sorted(set(h2h.values()), reverse=True):
-        sub = sorted(t for t in tied if h2h[t] == hv)
-        blocks.extend(_resolve_subtie(sub, decided))
-    return blocks
+def _rank_tied(teams, decided):
+    """Rank a set of teams level on the criterion that grouped them, applying the
+    2026 FIFA tiebreakers: head-to-head points, head-to-head GD, head-to-head
+    goals -- RE-APPLIED recursively to any still-level subset -- then overall GD
+    and overall goals. A goal-based rung is used only when every contributing
+    match is played; otherwise the still-tied teams stay in one ambiguous block."""
+    teams = sorted(teams)
+    if len(teams) <= 1:
+        return [teams]
+    internal = [d for d in decided if d["home"] in teams and d["away"] in teams]
+    # Head-to-head points (always determined within a branch)
+    h2hp = _points(teams, internal)
+    groups = _split_by(teams, lambda t: h2hp[t])
+    if len(groups) > 1:
+        return [blk for g in groups for blk in _rank_tied(g, decided)]
+    # All level on H2H points; H2H GD/goals need the internal matches played
+    if any(d["hs"] is None for d in internal):
+        return [teams]                       # H2H GD undecidable -> ambiguous block
+    hgd, hgf = _gd_gf(teams, internal)
+    groups = _split_by(teams, lambda t: (hgd[t], hgf[t]))
+    if len(groups) > 1:
+        return [blk for g in groups for blk in _rank_tied(g, decided)]
+    # Fully level on every head-to-head criterion -> overall GD / goals
+    overall_known = all(d["hs"] is not None for t in teams for d in decided
+                        if t in (d["home"], d["away"]))
+    if not overall_known:
+        return [teams]                       # overall GD undecidable -> ambiguous block
+    ogd, ogf = _gd_gf(teams, decided)
+    return _split_by(teams, lambda t: (ogd[t], ogf[t]))
 
 def rank_blocks(matches, branch):
     decided = _decide(matches, branch)
@@ -124,7 +124,7 @@ def rank_blocks(matches, branch):
     order = []
     for pv in sorted(set(pts.values()), reverse=True):
         tied = sorted(t for t in teams if pts[t] == pv)
-        order.extend(_resolve_tie(tied, decided))
+        order.extend(_rank_tied(tied, decided))
     return order
 
 def best_worst(matches, branch):

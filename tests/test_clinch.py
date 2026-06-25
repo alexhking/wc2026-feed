@@ -170,9 +170,38 @@ def test_golden_resolve_three_representative_groups():
     assert out.get("79") == {"home": "Mexico"}, out.get("79")
     assert out.get("73", {}).get("home") == "South Africa", out.get("73")
     assert out.get("81") == {"home": "USA"}, out.get("81")
-    # Group F untouched -> no F slots. F winner slot is 76? No: assert no spurious
-    # USA/Mexico-style false positives appear for groups we left empty.
-    assert "82" not in out or "home" not in out.get("82", {}), out  # Winner G slot empty
+    # No spurious slots for any untouched group: exactly these three are emitted.
+    assert set(out) == {"73", "79", "81"}, out
+
+def test_residual_tie_reapplies_h2h_before_overall_gd():
+    # Z beat X head-to-head, but X padded its overall GD against D. FIFA re-applies
+    # head-to-head to the still-level {X,Z} subset -> Z above X. The engine must NOT
+    # fall to overall GD (which would wrongly rank X first).
+    M = [
+        _M("X", "Y", 1, 0, True),
+        _M("Y", "Z", 1, 0, True),
+        _M("Z", "X", 3, 2, True),   # Z beats X head-to-head
+        _M("X", "D", 5, 0, True),   # X inflates overall GD
+        _M("Y", "D", 1, 0, True),
+        _M("Z", "D", 1, 0, True),
+    ]
+    pins = cl.clinched_positions(M)
+    assert pins == {"Z": 1, "X": 2}, pins
+
+def test_three_cycle_separated_by_h2h_goal_difference():
+    # A/B/C 3-cycle fully separated by head-to-head goal difference (A +4, C 0,
+    # B -4). No residual tie, so the re-application clause does NOT trigger:
+    # correct FIFA order is A, C, B. Guards against over-correcting the fix.
+    M = [
+        _M("A", "B", 5, 0, True),
+        _M("B", "C", 1, 0, True),
+        _M("C", "A", 1, 0, True),
+        _M("A", "D", 1, 0, True),
+        _M("B", "D", 1, 0, True),
+        _M("C", "D", 1, 0, True),
+    ]
+    pins = cl.clinched_positions(M)
+    assert pins == {"A": 1, "C": 2}, pins
 
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
