@@ -1,15 +1,21 @@
 {
   "73": {
-    "away": "Canada"
+    "away": "Canada",
+    "home": "South Africa"
   },
   "74": {
     "home": "Germany"
   },
   "75": {
-    "away": "Morocco"
+    "away": "Morocco",
+    "home": "Netherlands"
   },
   "76": {
+    "away": "Japan",
     "home": "Brazil"
+  },
+  "78": {
+    "home": "Ivory Coast"
   },
   "79": {
     "home": "Mexico"
