@@ -34,7 +34,8 @@
     "home": "Belgium"
   },
   "83": {
-    "away": "Croatia"
+    "away": "Croatia",
+    "home": "Portugal"
   },
   "84": {
     "home": "Spain"
@@ -45,6 +46,9 @@
   "86": {
     "away": "Cape Verde",
     "home": "Argentina"
+  },
+  "87": {
+    "home": "Colombia"
   },
   "88": {
     "away": "Egypt",
