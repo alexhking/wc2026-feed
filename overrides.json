@@ -1,4 +1,10 @@
 {
-  "79": { "home": "Mexico" },
-  "81": { "home": "USA" }
+  "74": { "away": "Paraguay" },
+  "77": { "away": "Sweden" },
+  "79": { "home": "Mexico", "away": "Ecuador" },
+  "80": { "away": "DR Congo" },
+  "81": { "home": "USA", "away": "Bosnia & Herzegovina" },
+  "82": { "away": "Senegal" },
+  "85": { "away": "Algeria" },
+  "87": { "away": "Ghana" }
 }
